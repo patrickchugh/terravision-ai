@@ -294,4 +294,4 @@ You are an AWS architect that needs to summarise this JSON of Terraform AWS reso
 
 """
 
-AWS_LLM_HOST = "http://18.134.252.220:11434"
+OLLAMA_HOST = "http://18.134.252.220:11434"

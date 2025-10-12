@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+import requests
 
 import click
 import ollama
@@ -204,18 +205,46 @@ def _check_terraform_version() -> None:
         sys.exit()
 
 
+def _check_ollama_server() -> None:
+    """Check if Ollama server is reachable."""
+    click.echo(click.style("\nChecking Ollama Server...", fg="white", bold=True))
+    try:
+        response = requests.get(f"{cloud_config.OLLAMA_HOST}/api/tags", timeout=5)
+        if response.status_code == 200:
+            click.echo(f"  Ollama server reachable at: {cloud_config.OLLAMA_HOST}")
+        else:
+            click.echo(
+                click.style(
+                    f"\n  ERROR: Ollama server returned status {response.status_code}",
+                    fg="red",
+                    bold=True,
+                )
+            )
+            sys.exit()
+    except requests.exceptions.RequestException as e:
+        click.echo(
+            click.style(
+                f"\n  ERROR: Cannot reach Ollama server at {cloud_config.OLLAMA_HOST}: {e}",
+                fg="red",
+                bold=True,
+            )
+        )
+        sys.exit()
+
+
 def preflight_check() -> None:
     """Check required dependencies and Terraform version compatibility."""
     click.echo(click.style("\nPreflight check..", fg="white", bold=True))
     _check_dependencies()
     _check_terraform_version()
+    _check_ollama_server()
 
 
 @click.version_option(version=__version__, prog_name="terravision")
 @click.group()
 def cli():
     """
-    terravision analyses Terraform and Source code to generate documentation and architecture diagrams for cloud projects.
+    TerraVision generates cloud architecture diagrams and documentation from Terraform scripts
 
     For help with a specific command type:
 
@@ -228,7 +257,7 @@ def cli():
 def _create_llm_client():
     """Create and return Ollama LLM client."""
     return ollama.Client(
-        host=cloud_config.AWS_LLM_HOST, headers={"x-some-header": "some-value"}
+        host=cloud_config.OLLAMA_HOST, headers={"x-some-header": "some-value"}
     )
 
 

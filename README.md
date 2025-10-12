@@ -1,5 +1,16 @@
 # terravision
-terravision is a CLI tool that converts Terraform code into Professional Cloud Architecture Diagrams and solves the problem of keeping the most important document in cloud projects, the architecture document, up to date. With high velocity releases the norm now, machine generated architecture diagrams are more accurate than relying on the freestyle diagram drawn by the cloud architect that doesn't match reality anymore. terravision securely runs 100% Client Side without any dependency on Terraform or access to your Cloud environment, to dynamically parse your conditionally created resources and variables and generate an automatic visual of your architecture. terravision is designed to be a 'Docs as Code' (DaC) tool that can be included in your CI/CD pipeline to update architecture diagrams after your build/test/release pipeline phases and supplement other document generators like readthedocs.io alongside it. It currently Supports AWS and soon Google and Azure cloud.
+
+terravision is an AI-powered CLI tool that converts Terraform code into Professional Cloud Architecture Diagrams and solves the problem of keeping the most important document in cloud projects, the architecture document, up to date. With high velocity releases the norm now, machine generated architecture diagrams are more accurate than relying on the freestyle diagram drawn by the cloud architect that doesn't match reality anymore. 
+
+terravision securely runs 100% Client Side without any dependency on Terraform or access to your Cloud environment, to dynamically parse your conditionally created resources and variables and generate an automatic visual of your architecture. terravision is designed to be a 'Docs as Code' (DaC) tool that can be included in your CI/CD pipeline to update architecture diagrams after your build/test/release pipeline phases and supplement other document generators like readthedocs.io alongside it. 
+
+**Current Version: 0.8** - Now with AI-powered diagram refinement using local LLM models!
+
+## Supported Cloud Providers
+- ✅ **AWS** (Full support with 200+ services)
+- 🔄 **Google Cloud Platform** (Coming soon)
+- 🔄 **Microsoft Azure** (Coming soon)
+- ✅ **On-Premises** (Generic infrastructure components)
 
 Turn this... 
 
@@ -9,8 +20,8 @@ into this...
 
 <img src="./images/architecture.png" width="640" height="580">
 
-
-This software is still in alpha testing and **code is shared on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND**, either express or implied. Use at your own risk.
+> **⚠️ Alpha Software Notice**  
+> This software is still in alpha testing and **code is shared on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND**, either express or implied. Use at your own risk.
 
 # Benefits of terravision
 1. Cost
@@ -35,35 +46,204 @@ This software is still in alpha testing and **code is shared on an "AS IS" BASIS
 
 # Installation and Usage
 
-## External Dependencies for all versions
-* graphviz https://graphviz.org/download/
-* git https://git-scm.com/downloads
-* terraform https://developer.hashicorp.com/terraform/downloads
+## System Requirements
+- **Python 3.8+** 
+- **Terraform 1.x**   
+- **Git**  
+- **Graphviz** 
+- **Ollama** (Required for AI-powered diagram refinement)
 
-## Quickstart
-1. Install all external dependencies as listed above
-2. Clone the repo ``git clone https://github.com/patrickchugh/terravision.git``
-3. Get the working directory (full path) by doing `cd terravision` and doing `pwd`.
-4. Add the terravision folder to your `PATH` value e.g. ``export PATH=$PATH:/Users/<PATH TO terravision>`` so you can run it from anywhere. `<PATH TO terravision>` would be the output from line 3.
-5. Install python requirements ``cd terravision && pip install -r requirements.txt``
-6. Ensure your terravision python script is executable with ``chmod +x terravision``
-7. Run `terravision` and specify your Terraform source files in the format:
-``` bash
-$ terravision draw --source ~/src/my-terraform-code
-```
+## 1. Install External Dependencies
 
-For Terraform stacks with workspaces, you can use the `--workspace` parameter:
+### Required Dependencies
+1. **Graphviz** - https://graphviz.org/download/
+   ```bash
+   # macOS
+   brew install graphviz
+   
+   # Ubuntu/Debian
+   sudo apt-get install graphviz
+   
+   # Windows
+   # Download from https://graphviz.org/download/
+   ```
+
+2. **Git** - https://git-scm.com/downloads
+   ```bash
+   # Most systems have git pre-installed
+   git --version
+   ```
+
+3. **Terraform** - https://developer.hashicorp.com/terraform/downloads
+   ```bash
+   # Verify installation
+   terraform version
+   # Must be v1.0.0 or higher
+   ```
+
+4. **Ollama** (for AI refinement) - https://ollama.ai/
+   ```bash
+   # Install Ollama
+   curl -fsSL https://ollama.ai/install.sh | sh
+   
+   # Start Ollama service
+   ollama serve
+   
+   # Pull required llama3 model
+   ollama pull llama3
+   ```
+
+## 2. Install TerraVision
+
+### Method 1: Quick Install in MacOS/Linux (For Casual Users - will install globally)
 ```bash
-$ terraform draw --source ~/src/my-terraform-code --workspace development
+# Clone the repository
+git clone https://github.com/patrickchugh/terravision.git
+cd terravision
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Make script executable in Linux
+chmod +x terravision.py
+
+# Create symbolic link without extension (Unix/Linux/macOS)
+ln -s $(pwd)/terravision.py $(pwd)/terravision
+
+# Add to PATH
+export PATH=$PATH:$(pwd)
+
+# Configure Ollama host (default: localhost:11434)
+# For remote server, replace with your server URL:
+sed -i 's|OLLAMA_HOST = ".*"|OLLAMA_HOST = "http://your-server:11434"|' modules/cloud_config.py
+
+# For macOS (requires different syntax)
+sed -i '' 's|OLLAMA_HOST = ".*"|OLLAMA_HOST = "http://your-server:11434"|' modules/cloud_config.py
 ```
 
-For Terraform source code in a Git repo you can also use the form:
-``` bash
-$ terravision draw --source https://github.com/your-repo/terraform-examples.git
+**For Windows:**
+```powershell
+# Clone the repository
+git clone https://github.com/patrickchugh/terravision.git
+cd terravision
+
+# Install Python dependencies
+pip install -r requirements.txt
+
+# Create batch file wrapper
+echo @python "%~dp0terravision.py" %* > terravision.bat
+
+# Add current directory to PATH or copy terravision.bat to a directory in PATH
+copy terravision.bat C:\Windows\System32\
+
+# Replace your-server with your server URL
+(Get-Content modules\cloud_config.py) -replace 'OLLAMA_HOST = ".*"', 'OLLAMA_HOST = "http://your-server:11434"' | Set-Content modules\cloud_config.py
+``` 
+
+### Method 2: Poetry Install (For Developers)
+```bash
+# MacOS or Linux users - Install Poetry if not already installed
+curl -sSL https://install.python-poetry.org | python3 -
+
+# For Windows Users
+(Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | py -
+
+# Clone and install with Poetry
+git clone https://github.com/patrickchugh/terravision.git
+cd terravision
+poetry install
+
+# Activate virtual environment
+source $(poetry env info --path)/bin/activate
+
+# Create symbolic link without extension
+ln -s $(pwd)/terravision.py $(pwd)/terravision
+
+# Add to PATH
+export PATH=$PATH:$(pwd)
 ```
-Use the `//` character for subfolders within Git repos if the code you want is under a folder hierarchy.
-``` bash
-$ terravision draw --source https://github.com/your-repo/terraform-examples.git//mysubfolder/secondfolder/
+
+## Basic Usage
+
+### Generate Architecture Diagram
+```bash
+# Basic usage - analyze current directory
+terravision draw
+
+# Specify source directory
+terravision draw --source ~/src/my-terraform-code
+
+# Use specific Terraform workspace
+terravision draw --source ~/src/my-terraform-code --workspace production
+
+# Use variable files
+terravision draw --source ~/src/my-terraform-code --varfile prod.tfvars
+
+# Generate different formats
+terravision draw --source ~/src/my-terraform-code --format svg
+terravision draw --source ~/src/my-terraform-code --format pdf
+
+# Show diagram after generation
+terravision draw --source ~/src/my-terraform-code --show
+```
+
+### Remote Git Repository Support
+```bash
+# Analyze Git repository
+terravision draw --source https://github.com/your-repo/terraform-examples.git
+
+# Analyze specific subfolder in Git repo
+terravision draw --source https://github.com/your-repo/terraform-examples.git//aws/vpc
+
+# Use with annotations
+terravision draw --source https://github.com/your-repo/terraform-examples.git --annotate ./custom-annotations.yml
+```
+
+### Export Graph Data
+```bash
+# Export resource relationships as JSON
+terravision graphdata --source ~/src/my-terraform-code
+
+# Show only unique services used
+terravision graphdata --source ~/src/my-terraform-code --show_services
+
+# Export to custom filename
+terravision graphdata --source ~/src/my-terraform-code --outfile my-resources.json
+```
+
+### Verifying Ollama Setup
+```bash
+# Check if Ollama is running
+curl http://localhost:11434/api/tags
+
+# Verify llama3 model is available
+ollama list
+
+# Test custom Ollama host
+curl http://your-server:11434/api/tags
+```
+
+## Advanced Features
+
+### Working with Pre-generated JSON from previous terravision run (faster)
+```bash
+# Use previously exported JSON data
+terravision draw --source ./architecture.json
+
+# Export and reuse graph data
+terravision graphdata --source ~/src/terraform --outfile graph.json
+terravision draw --source ./graph.json --format svg
+```
+
+### Debug Mode
+```bash
+# Enable debug output for troubleshooting and which will dump all state info into tfdata.json
+terravision draw --source ~/src/my-terraform-code --debug
+
+### Simplified Diagrams
+```bash
+# Generate high-level service overview
+terravision draw --source ~/src/my-terraform-code --simplified
 ```
 
 # Annotating generated diagrams
@@ -113,6 +293,171 @@ update:
 
 ```
 
-# Detailed help
+## Command Reference
 
-Type ``terravision --help`` for full command list or for help with a specific command
+### Main Commands
+
+#### `terravision draw`
+Generates architecture diagrams from Terraform code.
+
+**Options:**
+- `--source` - Source location (folder, Git URL, or JSON file)
+- `--workspace` - Terraform workspace (default: "default")
+- `--varfile` - Path to .tfvars file (can be used multiple times)
+- `--outfile` - Output filename (default: "architecture")
+- `--format` - Output format: png, pdf, svg, bmp (default: png)
+- `--show` - Automatically open diagram after generation
+- `--simplified` - Generate simplified high-level diagram
+- `--annotate` - Path to custom annotations YAML file
+- `--debug` - Enable debug output
+
+#### `terravision graphdata`
+Exports resource relationships and metadata as JSON.
+
+**Options:**
+- `--source` - Source location (folder, Git URL, or JSON file)
+- `--workspace` - Terraform workspace (default: "default")
+- `--varfile` - Path to .tfvars file (can be used multiple times)
+- `--outfile` - Output JSON filename (default: "architecture.json")
+- `--show_services` - Show only unique services list
+- `--annotate` - Path to custom annotations YAML file
+- `--debug` - Enable debug output
+
+### Global Options
+- `--version` - Show version information
+- `--help` - Show help message
+
+## Supported File Types
+
+### Input Sources
+- **Terraform files** (`.tf`, `.tf.json`)
+- **Variable files** (`.tfvars`, `.tfvars.json`)
+- **Git repositories** (HTTPS URLs)
+- **Pre-generated JSON** (`.json` graph data)
+- **Annotation files** (`.yml`, `.yaml`)
+
+### Output Formats
+- **PNG** (default) - Raster image format
+- **SVG** - Scalable vector graphics
+- **PDF** - Portable document format
+- **BMP** - Bitmap image format
+- **JSON** - Graph data export
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"terraform command not found"**
+   ```bash
+   # Verify Terraform installation
+   terraform version
+   # Should show v1.x.x
+   ```
+
+2. **"dot command not found"**
+   ```bash
+   # Install Graphviz
+   brew install graphviz  # macOS
+   sudo apt-get install graphviz  # Ubuntu
+   ```
+
+3. **"Terraform version not supported"**
+   - terravision requires Terraform v1.0.0 or higher
+   - Upgrade Terraform: https://developer.hashicorp.com/terraform/downloads
+
+4. **"No resources found"**
+   - Ensure your Terraform code is valid
+   - Run `terraform plan` to verify configuration
+   - Check that source path contains `.tf` files
+
+5. **AI refinement not working**
+   ```bash
+   # Check Ollama installation
+   ollama --version
+   
+   # Ensure llama3 model is available
+   ollama list
+   ollama pull llama3
+   
+   # Start Ollama service
+   ollama serve
+   
+   # Verify Ollama host configuration in modules/cloud_config.py
+   # Default: OLLAMA_HOST = "http://localhost:11434"
+   ```
+
+6. **Connection refused to Ollama (Linux or MacOS)**
+   ```bash
+
+   # Kill any ollama instances
+   pkill -9 ollama
+
+   # Kill any stale processes binding to port 1134
+   lsof -ti:11434 | xargs kill -9 
+
+   # Restart ollama
+   olama start
+   
+   # Check if Ollama is running on correct port
+   netstat -tlnp | grep 11434
+   
+   # Test connection to Ollama
+   curl http://localhost:11434/api/tags
+
+
+   
+   # Update OLLAMA_HOST in modules/cloud_config.py if using remote server
+   ```
+
+### Debug Mode
+Use `--debug` flag for detailed troubleshooting information:
+```bash
+terravision draw --source ~/src/terraform --debug
+```
+
+This will:
+- Show detailed processing steps
+- Export intermediate JSON files
+- Display full error traces
+- Validate all dependencies
+
+### Getting Help
+
+For detailed help on any command:
+```bash
+terravision --help
+terravision draw --help
+terravision graphdata --help
+```
+
+## Performance Tips
+
+1. **Large Terraform Projects**
+   - Use `--simplified` for overview diagrams
+   - Export to JSON first, then generate multiple diagram variants
+   - Use specific workspaces to reduce scope
+
+2. **CI/CD Integration**
+   ```bash
+   # Example CI pipeline step
+   terravision draw --source . --format svg --outfile architecture-${BUILD_NUMBER}
+   ```
+
+3. **Batch Processing**
+   ```bash
+   # Generate multiple formats
+   for format in png svg pdf; do
+     terravision draw --source . --format $format --outfile arch-$format
+   done
+   ```
+
+## Version Information
+
+**Current Version:** 0.8
+
+**Recent Updates:**
+- AI-powered diagram refinement with Ollama integration
+- Enhanced cloud provider support
+- Improved JSON export capabilities
+- Better error handling and debugging
+- Performance optimizations for large projects
