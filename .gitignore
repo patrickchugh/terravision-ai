@@ -1,1 +1,4 @@
 .DS_Store
+resource_classes/__pycache__/*
+resource_classes/aws/__pycache__/*
+resource_classes/generic/__pycache__/*
