@@ -1,0 +1,103 @@
+{
+    "aws_eip.elastic_ip": [
+        "aws_nat_gateway.nat_gw"
+    ],
+    "aws_group.shared_services": [
+        "aws_eip.elastic_ip"
+    ],
+    "aws_internet_gateway.igw": [
+        "aws_eip.elastic_ip",
+        "aws_route.public_internet_gateway"
+    ],
+    "aws_nat_gateway.nat_gw": [
+        "aws_route.private_nat_gateway"
+    ],
+    "aws_route.private_nat_gateway": [],
+    "aws_route.public_internet_gateway": [],
+    "aws_route_table.vpc_private_rt": [
+        "aws_route.private_nat_gateway",
+        "aws_route_table_association.private"
+    ],
+    "aws_route_table.vpc_public_rt": [
+        "aws_route.public_internet_gateway",
+        "aws_route_table_association.public"
+    ],
+    "aws_route_table_association.private[0]~1": [],
+    "aws_route_table_association.private[1]~2": [],
+    "aws_route_table_association.private[2]~3": [],
+    "aws_route_table_association.private[3]~4": [],
+    "aws_route_table_association.private[4]~5": [],
+    "aws_route_table_association.private[5]~6": [],
+    "aws_route_table_association.public[0]~1": [],
+    "aws_route_table_association.public[1]~2": [],
+    "aws_route_table_association.public[2]~3": [],
+    "aws_route_table_association.public[3]~4": [],
+    "aws_route_table_association.public[4]~5": [],
+    "aws_route_table_association.public[5]~6": [],
+    "aws_subnet.private_subnets[0]~1": [
+        "aws_route_table_association.private"
+    ],
+    "aws_subnet.private_subnets[1]~2": [
+        "aws_route_table_association.private"
+    ],
+    "aws_subnet.private_subnets[2]~3": [
+        "aws_route_table_association.private"
+    ],
+    "aws_subnet.private_subnets[3]~4": [
+        "aws_route_table_association.private"
+    ],
+    "aws_subnet.private_subnets[4]~5": [
+        "aws_route_table_association.private"
+    ],
+    "aws_subnet.private_subnets[5]~6": [
+        "aws_route_table_association.private"
+    ],
+    "aws_subnet.public_subnets[0]~1": [
+        "aws_nat_gateway.nat_gw",
+        "aws_route_table_association.public"
+    ],
+    "aws_subnet.public_subnets[1]~2": [
+        "aws_nat_gateway.nat_gw",
+        "aws_route_table_association.public"
+    ],
+    "aws_subnet.public_subnets[2]~3": [
+        "aws_nat_gateway.nat_gw",
+        "aws_route_table_association.public"
+    ],
+    "aws_subnet.public_subnets[3]~4": [
+        "aws_nat_gateway.nat_gw",
+        "aws_route_table_association.public"
+    ],
+    "aws_subnet.public_subnets[4]~5": [
+        "aws_nat_gateway.nat_gw",
+        "aws_route_table_association.public"
+    ],
+    "aws_subnet.public_subnets[5]~6": [
+        "aws_nat_gateway.nat_gw",
+        "aws_route_table_association.public"
+    ],
+    "aws_vpc.main_vpc": [
+        "aws_internet_gateway.igw",
+        "aws_route_table.vpc_private_rt",
+        "aws_route_table.vpc_public_rt",
+        "aws_subnet.private_subnets",
+        "aws_subnet.private_subnets[0]~1",
+        "aws_subnet.private_subnets[1]~2",
+        "aws_subnet.private_subnets[2]~3",
+        "aws_subnet.private_subnets[3]~4",
+        "aws_subnet.private_subnets[4]~5",
+        "aws_subnet.private_subnets[5]~6",
+        "aws_subnet.public_subnets",
+        "aws_subnet.public_subnets[0]~1",
+        "aws_subnet.public_subnets[1]~2",
+        "aws_subnet.public_subnets[2]~3",
+        "aws_subnet.public_subnets[3]~4",
+        "aws_subnet.public_subnets[4]~5",
+        "aws_subnet.public_subnets[5]~6",
+        "aws_vpc_dhcp_options_association.dns_resolver"
+    ],
+    "aws_vpc_dhcp_options.vpc_dhcp": [
+        "aws_vpc_dhcp_options_association.dns_resolver"
+    ],
+    "aws_vpc_dhcp_options_association.dns_resolver": []
+}
