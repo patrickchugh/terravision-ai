@@ -95,7 +95,7 @@ into this...
 
 ## 2. Install TerraVision
 
-### Method 1: Quick Install in MacOS/Linux (For Casual Users - will install globally)
+### Method 1: Quick Install in MacOS/Linux (For Casual Users - will install packages globally)
 ```bash
 # Clone the repository
 git clone https://github.com/patrickchugh/terravision.git
@@ -140,7 +140,7 @@ copy terravision.bat C:\Windows\System32\
 (Get-Content modules\cloud_config.py) -replace 'OLLAMA_HOST = ".*"', 'OLLAMA_HOST = "http://your-server:11434"' | Set-Content modules\cloud_config.py
 ``` 
 
-### Method 2: Poetry Install (For Developers)
+### Method 2: Poetry Install (Recommended for Developers and Power Users)
 ```bash
 # MacOS or Linux users - Install Poetry if not already installed
 curl -sSL https://install.python-poetry.org | python3 -
@@ -159,7 +159,7 @@ source $(poetry env info --path)/bin/activate
 # Create symbolic link without extension
 ln -s $(pwd)/terravision.py $(pwd)/terravision
 
-# Add to PATH
+# Add current terravision directory to PATH
 export PATH=$PATH:$(pwd)
 ```
 
@@ -389,11 +389,20 @@ Exports resource relationships and metadata as JSON.
 6. **Connection refused to Ollama (Linux or MacOS)**
    ```bash
 
+   # Try to ping Ollama server and verify connectivity
+   ping <yourserverip>
+
    # Kill any ollama instances
    pkill -9 ollama
 
    # Kill any stale processes binding to port 1134
    lsof -ti:11434 | xargs kill -9 
+
+   # If using an external server, make sure Ollama binds to all network interfaces
+   export OLLAMA_HOST="0.0.0.0"  #use localhost:1134 if not external
+
+   # Make sure Ollama server does not unload model after 5 mins (default)
+   export OLLAMA_KEEP_ALIVE=-1 
 
    # Restart ollama
    olama start
@@ -404,9 +413,8 @@ Exports resource relationships and metadata as JSON.
    # Test connection to Ollama
    curl http://localhost:11434/api/tags
 
-
+   # Update OLLAMA_HOST in modules/cloud_config.py with external IP not local IP if using remote server
    
-   # Update OLLAMA_HOST in modules/cloud_config.py if using remote server
    ```
 
 ### Debug Mode

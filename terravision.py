@@ -144,9 +144,6 @@ def compile_tfdata(
     return tfdata
 
 
-# amazonq-ignore-next-line
-
-
 def _check_dependencies() -> None:
     """Check if required command-line tools are available."""
     dependencies = ["dot", "gvpr", "git", "terraform"]
@@ -171,7 +168,6 @@ def _check_dependencies() -> None:
 
 def _check_terraform_version() -> None:
     """Validate Terraform version is compatible."""
-    click.echo(click.style("\nChecking Terraform Version...", fg="white", bold=True))
     version_file = "terraform_version.txt"
 
     try:
@@ -181,7 +177,7 @@ def _check_terraform_version() -> None:
         version_output = result.stdout
 
         version_line = version_output.split("\n")[0]
-        print(f"\n{version_line}")
+        print(f"  terraform version detected: {version_line}")
         version = version_line.split(" ")[1].replace("v", "")
         version_major = version.split(".")[0]
 
@@ -207,7 +203,7 @@ def _check_terraform_version() -> None:
 
 def _check_ollama_server() -> None:
     """Check if Ollama server is reachable."""
-    click.echo(click.style("\nChecking Ollama Server...", fg="white", bold=True))
+    click.echo("  checking Ollama server..")
     try:
         response = requests.get(f"{cloud_config.OLLAMA_HOST}/api/tags", timeout=5)
         if response.status_code == 200:
@@ -238,6 +234,7 @@ def preflight_check() -> None:
     _check_dependencies()
     _check_terraform_version()
     _check_ollama_server()
+    click.echo("\n")
 
 
 @click.version_option(version=__version__, prog_name="terravision")

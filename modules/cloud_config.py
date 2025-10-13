@@ -281,7 +281,10 @@ You are an AWS architect that needs to refine this JSON of Terraform AWS resourc
 7. Use double quotes for key-value pairs
 8. Do not rename any existing key value pairs
 9. Every resources from the original JSON should appear in the new JSON
-10. Use the same format of existing JSON where every key is a terraform resource name
+10. Every JSON key must be a aws_ or tv_ prefixed terraform resource name
+11. Ensure there are no nested key pairs in each key-pair
+
+After displaying the refined JSON do not return any other text
 
 """
 

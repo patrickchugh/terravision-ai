@@ -4,3 +4,5 @@ resource_classes/aws/__pycache__/*
 resource_classes/generic/__pycache__/*
 modules/__pycache__/*
 .vscode/*
+tfdata.json
+architecture.dot.png
