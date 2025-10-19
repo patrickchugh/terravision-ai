@@ -4,7 +4,7 @@ TerraVision is an AI-powered CLI tool that converts Terraform code into Professi
 
 TerraVision securely runs 100% Client Side without any dependency or access to your Cloud environment, dynamically parses your conditionally created resources and variables and generates an automatic visual of your architecture. TerraVision is designed to be a 'Docs as Code' (DaC) tool that can be included in your CI/CD pipeline to update architecture diagrams after your build/test/release pipeline phases and supplement other document generators like readthedocs.io alongside it. 
 
-**Current Version: 0.8** - Now with AI-powered diagram refinement using local LLM models!
+**Current Version: 0.8**
 
 ## Supported Cloud Providers
 - ✅ **AWS** (Full support with 200+ services)
@@ -50,9 +50,7 @@ into this...
 - **Python 3.8+** 
 - **Terraform 1.x**   
 - **Git**  
-- **Graphviz** 
-- **Ollama** (Required for AI-powered diagram refinement)
-- **16GB** of RAM if you want to run Ollama locally. Dedicated GPU is recommended for faster performance.
+- **Graphviz**
 
 ## 1. Install External Dependencies
 
@@ -82,17 +80,7 @@ into this...
    # Must be v1.0.0 or higher
    ```
 
-4. **Ollama** (for AI refinement) - https://ollama.ai/
-   ```bash
-   # For macOS or Linux you can use curl to install Ollama, for Windows just download the install EXE
-   curl -fsSL https://ollama.ai/install.sh | sh
-    
-   # Pull required llama3 model
-   ollama pull llama3
 
-   # Start Ollama service
-   ollama serve
-   ```
 
 ## 2. Install TerraVision
 
@@ -114,12 +102,7 @@ ln -s $(pwd)/terravision.py $(pwd)/terravision
 # Add to PATH
 export PATH=$PATH:$(pwd)
 
-# Configure Ollama host (default: localhost:11434)
-# For remote server, replace with your server URL:
-sed -i 's|OLLAMA_HOST = ".*"|OLLAMA_HOST = "http://your-server:11434"|' modules/cloud_config.py
 
-# For macOS (requires different syntax)
-sed -i '' 's|OLLAMA_HOST = ".*"|OLLAMA_HOST = "http://your-server:11434"|' modules/cloud_config.py
 ```
 
 **For Windows:**
@@ -137,8 +120,7 @@ echo @python "%~dp0terravision.py" %* > terravision.bat
 # Add current directory to PATH or copy terravision.bat to a directory in PATH
 copy terravision.bat C:\Windows\System32\
 
-# Replace your-server with your server URL
-(Get-Content modules\cloud_config.py) -replace 'OLLAMA_HOST = ".*"', 'OLLAMA_HOST = "http://your-server:11434"' | Set-Content modules\cloud_config.py
+
 ``` 
 
 ### Method 2: Poetry Install (Recommended for Developers and Power Users)
@@ -212,17 +194,7 @@ terravision graphdata --source ~/src/my-terraform-code --show_services
 terravision graphdata --source ~/src/my-terraform-code --outfile my-resources.json
 ```
 
-### Verifying Ollama Setup
-```bash
-# Check if Ollama is running
-curl http://localhost:11434/api/tags
 
-# Verify llama3 model is available
-ollama list
-
-# Test custom Ollama host
-curl http://your-server:11434/api/tags
-```
 
 ## Advanced Features
 
@@ -377,51 +349,7 @@ Exports resource relationships and metadata as JSON.
    - Run `terraform plan` to verify configuration
    - Check that source path contains `.tf` files
 
-5. **AI refinement not working**
-   ```bash
-   # Check Ollama installation
-   ollama --version
-   
-   # Ensure llama3 model is available
-   ollama list
-   ollama pull llama3
-   
-   # Start Ollama service
-   ollama serve
-   
-   # Verify Ollama host configuration in modules/cloud_config.py
-   # Default: OLLAMA_HOST = "http://localhost:11434"
-   ```
 
-6. **Connection refused to Ollama (Linux or MacOS)**
-   ```bash
-
-   # Try to ping Ollama server and verify connectivity
-   ping <yourserverip>
-
-   # Kill any ollama instances
-   pkill -9 ollama
-
-   # Kill any stale processes binding to port 1134
-   lsof -ti:11434 | xargs kill -9 
-
-   # If using an external server, make sure Ollama binds to all network interfaces
-   export OLLAMA_HOST="0.0.0.0"  #use localhost:1134 if not external
-
-   # Make sure Ollama server does not unload model after 5 mins (default)
-   export OLLAMA_KEEP_ALIVE=-1 
-
-   # Restart ollama
-   olama start
-   
-   # Check if Ollama is running on correct port
-   netstat -tlnp | grep 11434
-   
-   # Test connection to Ollama
-   curl http://localhost:11434/api/tags
-   
-   ```
-   * Update OLLAMA_HOST in modules/cloud_config.py with external IP not local IP if using remote server
 
 ### Debug Mode
 Use `--debug` flag for detailed troubleshooting information:
@@ -470,7 +398,6 @@ terravision graphdata --help
 **Current Version:** 0.8
 
 **Recent Updates:**
-- AI-powered diagram refinement with Ollama integration
 - Enhanced cloud provider support
 - Improved JSON export capabilities
 - Better error handling and debugging

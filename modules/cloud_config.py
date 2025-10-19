@@ -266,31 +266,3 @@ AWS_NAME_REPLACEMENTS = {
     "iam_policy": "policy",
     "this": "",
 }
-
-
-AWS_REFINEMENT_PROMPT = """
-Transform this Terraform AWS resource dependency graph in JSON by:
-
-1. Filter AZ dependencies: Each "aws_az.*~N" key keeps only subnet dependencies with matching suffix ~N 
-2. Do not rename any other aws_subnet key-pairs and ensure all existing [X] and ~Y suffixes where X and Y are numbers remain
-3. Clear IAM profile deps: Set resources of type "aws_iam_instance_profile.ec2_instance_profile" to []
-4. Any aws_instance EC2 resources related to an EC2 Instance Profile, where the Instance profile is related to an AWS IAM Role type resource, add dependency to IAM role with ec2 resource name
-5. Split NAT Gateway: Convert "module.private-vpc.aws_nat_gateway.nat_gw" into multiple keys with ~1, ~2, ~3 suffixes, each with same dependencies when the nat gatwway is in multiple subnets
-6. Update subnet NAT refs: In public_subnets[N]~M, change nat_gw reference to nat_gw~M but do not rename any other key-pairs of resources
-7. Ensure you are preserving all other key-value pairs unchanged
-
-Apply to:
-
-"""
-
-
-AWS_DOCUMENTATION_PROMPT = """\
-You are an AWS architect that needs to summarise this JSON of Terraform AWS resources and their associations concisely in paragraph form without using any bullet points. Follow these instructions:
-1. If you see square brackets in the resource name it means multiple instances of the same resource are created. Include how many of each resource type are created in the summary. 
-2. Use only AWS resource names in the text which can be inferred from terraform resource type names. e.g. instead of aws_ec2_instance.XXX just say an EC2 Instance named XXX
-3. Mention which resources are associated with each respective subnet and availability zone if any. 
-4. Provide an overall summary of the architecture and what the system does
-
-"""
-
-OLLAMA_HOST = "http://18.170.221.107:11434"

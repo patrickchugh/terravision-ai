@@ -8,7 +8,6 @@ from pathlib import Path
 import requests
 
 import click
-import ollama
 
 import modules.annotations as annotations
 import modules.drawing as drawing
@@ -99,6 +98,7 @@ def _enrich_graph_data(tfdata: dict, debug: bool, already_processed: bool) -> di
     tfdata = graphmaker.create_multiple_resources(tfdata)
     tfdata = graphmaker.reverse_relations(tfdata)
     tfdata = helpers.remove_recursive_links(tfdata)
+    tfdata = graphmaker.match_resources(tfdata)
     return tfdata
 
 
@@ -196,31 +196,7 @@ def _check_terraform_version() -> None:
         sys.exit()
 
 
-def _check_ollama_server() -> None:
-    """Check if Ollama server is reachable."""
-    click.echo("  checking Ollama server..")
-    try:
-        response = requests.get(f"{cloud_config.OLLAMA_HOST}/api/tags", timeout=5)
-        if response.status_code == 200:
-            click.echo(f"  Ollama server reachable at: {cloud_config.OLLAMA_HOST}")
-        else:
-            click.echo(
-                click.style(
-                    f"\n  ERROR: Ollama server returned status {response.status_code}",
-                    fg="red",
-                    bold=True,
-                )
-            )
-            sys.exit()
-    except requests.exceptions.RequestException as e:
-        click.echo(
-            click.style(
-                f"\n  ERROR: Cannot reach Ollama server at {cloud_config.OLLAMA_HOST}: {e}",
-                fg="red",
-                bold=True,
-            )
-        )
-        sys.exit()
+
 
 
 def preflight_check() -> None:
@@ -228,7 +204,6 @@ def preflight_check() -> None:
     click.echo(click.style("\nPreflight check..", fg="white", bold=True))
     _check_dependencies()
     _check_terraform_version()
-    _check_ollama_server()
     click.echo("\n")
 
 
@@ -246,52 +221,7 @@ def cli():
     pass
 
 
-def _create_llm_client():
-    """Create and return Ollama LLM client."""
-    return ollama.Client(
-        host=cloud_config.OLLAMA_HOST, headers={"x-some-header": "some-value"}
-    )
 
-
-def _stream_llm_response(client, graphdict: dict, debug: bool) -> str:
-    """Stream LLM response and return complete output."""
-    stream = client.chat(
-        model="llama3",
-        keep_alive=-1,
-        messages=[
-            {
-                "role": "user",
-                "content": cloud_config.AWS_REFINEMENT_PROMPT
-                + (
-                    "Explain why you made every change after outputting the refined JSON\n"
-                    if debug
-                    else ""
-                )
-                + str(graphdict),
-            }
-        ],
-        options={"temperature": 0, "seed": 42, "top_p": 1.0, "top_k": 1},
-        stream=True,
-    )
-    full_response = ""
-    for chunk in stream:
-        content = chunk["message"]["content"]
-        print(content, end="", flush=True)
-        full_response += content
-    return full_response
-
-
-def _refine_with_llm(tfdata: dict, debug: bool) -> dict:
-    """Refine graph dictionary using LLM and return updated tfdata."""
-    click.echo(
-        click.style("\nCalling AI Model for JSON refinement..\n", fg="white", bold=True)
-    )
-    client = _create_llm_client()
-    full_response = _stream_llm_response(client, tfdata["graphdict"], debug)
-    refined_json = helpers.extract_json_from_string(full_response)
-    _print_graph_debug(refined_json, "Final LLM Refined JSON")
-    tfdata["graphdict"] = refined_json
-    return tfdata
 
 
 @cli.command()
@@ -350,9 +280,6 @@ def draw(
     _show_banner()
     preflight_check()
     tfdata = compile_tfdata(source, varfile, workspace, debug, annotate)
-    # Pass to LLM if this is not a pregraphed JSON
-    if "all_resource" in tfdata:
-        tfdata = _refine_with_llm(tfdata, debug)
     drawing.render_diagram(tfdata, show, simplified, outfile, format, source)
 
 
@@ -402,8 +329,6 @@ def graphdata(
     _show_banner()
     preflight_check()
     tfdata = compile_tfdata(source, varfile, workspace, debug, annotate)
-    if "all_resource" in tfdata:
-        tfdata = _refine_with_llm(tfdata, debug)
     click.echo(click.style("\nOutput JSON Dictionary :", fg="white", bold=True))
     unique = helpers.unique_services(tfdata["graphdict"])
     click.echo(
