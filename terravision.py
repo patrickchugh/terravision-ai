@@ -196,9 +196,6 @@ def _check_terraform_version() -> None:
         sys.exit()
 
 
-
-
-
 def preflight_check() -> None:
     """Check required dependencies and Terraform version compatibility."""
     click.echo(click.style("\nPreflight check..", fg="white", bold=True))
@@ -219,9 +216,6 @@ def cli():
 
     """
     pass
-
-
-
 
 
 @cli.command()

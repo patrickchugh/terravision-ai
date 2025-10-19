@@ -145,19 +145,22 @@ def get_no_module_name(node: str):
 
 def extract_subfolder_from_repo(source_url: str) -> tuple[str, str]:
     """
-    Extract repo URL and subfolder from a string like 'github.com/user/repo/subfolder'.
+    Extract repo URL and subfolder from a string like 'https://github.com/user/repo.git//code/02-one-server'.
 
     Returns:
         tuple: (repo_url, subfolder) - subfolder is empty string if none exists
     """
-    parts = source_url.split("/")
-
-    # GitHub repos have format: domain/owner/repo[/subfolder/path]
-    if len(parts) > 3:
-        repo_url = "/".join(parts[:3])  # domain/owner/repo
-        subfolder = "/".join(parts[3:])  # everything after
-        return repo_url, subfolder
-
+    # Find the subfolder separator // after the protocol
+    if source_url.count("//") > 1:
+        # Split on the second occurrence of //
+        protocol_end = source_url.find("//") + 2
+        remaining = source_url[protocol_end:]
+        if "//" in remaining:
+            repo_part, subfolder = remaining.split("//", 1)
+            repo_url = source_url[:protocol_end] + repo_part
+            subfolder = subfolder.rstrip("/")
+            return repo_url, subfolder
+    
     return source_url, ""
 
 
