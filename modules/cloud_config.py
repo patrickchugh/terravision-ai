@@ -275,29 +275,14 @@ Transform this Terraform AWS resource dependency graph in JSON by:
 2. Do not rename any other aws_subnet key-pairs and ensure all existing [X] and ~Y suffixes where X and Y are numbers remain
 3. Clear IAM profile deps: Set resources of type "aws_iam_instance_profile.ec2_instance_profile" to []
 4. Any aws_instance EC2 resources related to an EC2 Instance Profile, where the Instance profile is related to an AWS IAM Role type resource, add dependency to IAM role with ec2 resource name
-5. Split NAT Gateway: Convert "module.private-vpc.aws_nat_gateway.nat_gw" into three keys with ~1, ~2, ~3 suffixes, each with same dependencies when the nat gatwway is in multiple subnets
+5. Split NAT Gateway: Convert "module.private-vpc.aws_nat_gateway.nat_gw" into multiple keys with ~1, ~2, ~3 suffixes, each with same dependencies when the nat gatwway is in multiple subnets
 6. Update subnet NAT refs: In public_subnets[N]~M, change nat_gw reference to nat_gw~M but do not rename any other key-pairs of resources
 7. Ensure you are preserving all other key-value pairs unchanged
 
 Apply to:
 
 """
-# AWS_REFINEMENT_PROMPT = """
 
-# You are an AWS Solution Architect and need to refine the below JSON containing Terraform AWS resource names and the associations between them.
-# If you see a resource with a number suffix [X]~X where X is a number it means multiple instances of the same resource have been created. Each JSON key-pair is a single level, flat list of associated resource names. Make the following refinements to the JSON below whilst keeping the same format and structure :
-
-# 1. For each 'aws_az.availability_zone~X' key, ensure it only contains associations for the matching numbered subnets (e.g. availability_zone~1 should only reference subnets with ~1)
-# 2. Add '~1', '~2', '~3' etc incrementally adding suffixes to aws_security group resources when they are related to match subnet numbering (e.g. 'aws_security_group.xxx' becomes 'aws_security_group.xxx~1' etc)
-# 3. If you see an EC2 is related to an EC2 Instance Profile, and the Instance profile is related to an AWS IAM Role type resource, add the EC2 resource as an association under the AWS IAM Role key directly
-# 4. Do not omit any existing key-pairs of resources without being instructed
-# 5. Keep existing [X] and ~Y suffixes where X and Y are numbers when you see them in the original resource names and do not add new suffixes unless told to
-# 6. Do not add new resource associations that were not present in original JSON
-# 7. Do not correct any assumed typos
-# 8. Check you did not omit any existing resource key-pairs before giving the output
-
-# Output only valid JSON using double quotes for all values.
-# """
 
 AWS_DOCUMENTATION_PROMPT = """\
 You are an AWS architect that needs to summarise this JSON of Terraform AWS resources and their associations concisely in paragraph form without using any bullet points. Follow these instructions:
