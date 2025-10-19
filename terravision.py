@@ -54,19 +54,22 @@ def _validate_source(source: list):
 
 
 def _load_json_source(source: str):
-    click.echo(
-        "Source is a pre-generated JSON tfdata or tfgraph file. Will not call terraform binary."
-    )
     with open(source, "r") as file:
         jsondata = json.load(file)
     tfdata = {"annotations": {}, "meta_data": {}}
     if "all_resource" in jsondata:
+        click.echo(
+            "Source appears to be a JSON of previous debug output. Will not call terraform binary."
+        )
         tfdata = jsondata
         tfdata["graphdict"] = dict(tfdata["original_graphdict"])
-        return tfdata, False
+        tfdata["metadata"] = dict(tfdata["original_metadata"])
     else:
+        click.echo(
+            "Source is a pre-generated JSON tfgraph file. Will not call terraform binary or AI model."
+        )
         tfdata["graphdict"] = jsondata
-        return tfdata, True
+    return tfdata
 
 
 def _process_terraform_source(
@@ -80,14 +83,14 @@ def _process_terraform_source(
         else tfdata["codepath"]
     )
     tfdata = fileparser.read_tfsource(codepath, varfile, annotate, tfdata)
-    tfdata = interpreter.prefix_module_names(tfdata)
-    tfdata = interpreter.resolve_all_variables(tfdata, debug)
     if debug:
         helpers.export_tfdata(tfdata)
     return tfdata
 
 
-def _enrich_graph_data(tfdata: dict):
+def _enrich_graph_data(tfdata: dict, debug: bool, already_processed: bool) -> dict:
+    tfdata = interpreter.prefix_module_names(tfdata)
+    tfdata = interpreter.resolve_all_variables(tfdata, debug, already_processed)
     tfdata = graphmaker.add_relations(tfdata)
     tfdata = graphmaker.consolidate_nodes(tfdata)
     tfdata = annotations.add_annotations(tfdata)
@@ -120,27 +123,19 @@ def compile_tfdata(
         dict: Enriched tfdata dictionary with graphdict and metadata
     """
     _validate_source(source)
+    already_processed = False
     if source[0].endswith(".json"):
-        tfdata, already_processed = _load_json_source(source[0])
-        if already_processed:
-            debug = False
-            _print_graph_debug(tfdata["graphdict"], "Loaded JSON graph dictionary")
-            return tfdata
-        else:
-            _print_graph_debug(
-                tfdata["original_graphdict"], "Unprocessed Terraform graph dictionary"
-            )
-            _print_graph_debug(
-                tfdata["original_graphdict"], "Enriched graph dictionary"
-            )
+        tfdata = _load_json_source(source[0])
+        already_processed = True
+        if "all_resource" not in tfdata:
+            _print_graph_debug(tfdata["graphdict"], "Loaded JSON graphviz dictionary")
     else:
         tfdata = _process_terraform_source(source, varfile, workspace, annotate, debug)
-    _print_graph_debug(
-        tfdata["original_graphdict"], "Unprocessed Terraform graph dictionary"
-    )
-    tfdata = _enrich_graph_data(tfdata)
-    tfdata["graphdict"] = helpers.sort_graphdict(tfdata["graphdict"])
-    _print_graph_debug(tfdata["graphdict"], "Enriched graphviz dictionary")
+    if "all_resource" in tfdata:
+        _print_graph_debug(tfdata["graphdict"], "Terraform JSON graph dictionary")
+        tfdata = _enrich_graph_data(tfdata, debug, already_processed)
+        tfdata["graphdict"] = helpers.sort_graphdict(tfdata["graphdict"])
+        _print_graph_debug(tfdata["graphdict"], "Enriched graphviz dictionary")
     return tfdata
 
 
@@ -258,7 +253,7 @@ def _create_llm_client():
     )
 
 
-def _stream_llm_response(client, graphdict: dict) -> str:
+def _stream_llm_response(client, graphdict: dict, debug: bool) -> str:
     """Stream LLM response and return complete output."""
     stream = client.chat(
         model="llama3",
@@ -266,9 +261,16 @@ def _stream_llm_response(client, graphdict: dict) -> str:
         messages=[
             {
                 "role": "user",
-                "content": cloud_config.AWS_REFINEMENT_PROMPT + "\n" + str(graphdict),
+                "content": cloud_config.AWS_REFINEMENT_PROMPT
+                + (
+                    "Explain why you made every change after outputting the refined JSON\n"
+                    if debug
+                    else ""
+                )
+                + str(graphdict),
             }
         ],
+        options={"temperature": 0, "seed": 42, "top_p": 1.0, "top_k": 1},
         stream=True,
     )
     full_response = ""
@@ -279,13 +281,13 @@ def _stream_llm_response(client, graphdict: dict) -> str:
     return full_response
 
 
-def _refine_with_llm(tfdata: dict) -> dict:
+def _refine_with_llm(tfdata: dict, debug: bool) -> dict:
     """Refine graph dictionary using LLM and return updated tfdata."""
     click.echo(
         click.style("\nCalling AI Model for JSON refinement..\n", fg="white", bold=True)
     )
     client = _create_llm_client()
-    full_response = _stream_llm_response(client, tfdata["graphdict"])
+    full_response = _stream_llm_response(client, tfdata["graphdict"], debug)
     refined_json = helpers.extract_json_from_string(full_response)
     _print_graph_debug(refined_json, "Final LLM Refined JSON")
     tfdata["graphdict"] = refined_json
@@ -348,7 +350,9 @@ def draw(
     _show_banner()
     preflight_check()
     tfdata = compile_tfdata(source, varfile, workspace, debug, annotate)
-    tfdata = _refine_with_llm(tfdata)
+    # Pass to LLM if this is not a pregraphed JSON
+    if "all_resource" in tfdata:
+        tfdata = _refine_with_llm(tfdata, debug)
     drawing.render_diagram(tfdata, show, simplified, outfile, format, source)
 
 
@@ -395,10 +399,11 @@ def graphdata(
     """List Cloud Resources and Relations as JSON"""
     if not debug:
         sys.excepthook = my_excepthook
-
     _show_banner()
     preflight_check()
     tfdata = compile_tfdata(source, varfile, workspace, debug, annotate)
+    if "all_resource" in tfdata:
+        tfdata = _refine_with_llm(tfdata, debug)
     click.echo(click.style("\nOutput JSON Dictionary :", fg="white", bold=True))
     unique = helpers.unique_services(tfdata["graphdict"])
     click.echo(

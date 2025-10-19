@@ -18,7 +18,7 @@ ACRONYMS_LIST = cloud_config.AWS_ACRONYMS_LIST
 NAME_REPLACEMENTS = cloud_config.AWS_NAME_REPLACEMENTS
 
 # List of dictionary sections to output in log
-output_sections = ["locals", "module", "resource", "data"]
+output_sections = ["locals", "module", "resource", "data", "output"]
 
 
 def extract_json_from_string(text: str) -> dict:
@@ -216,6 +216,10 @@ def unique_services(nodelist: list) -> list:
     return sorted(set(service_list))
 
 
+def remove_numbered_suffix(s: str) -> str:
+    return s.split("~")[0] if "~" in s else s
+
+
 def find_between(text, begin, end, alternative="", replace=False, occurrence=1):
     if not text:
         return
@@ -323,7 +327,7 @@ def replace_variables(vartext, filename, all_variables, quotes=False):
     var_found_list = re.findall(r"var\.[A-Za-z0-9_-]+", vartext)
     if var_found_list:
         for varstring in var_found_list:
-            varname = varstring.replace("var.", "").lower()
+            varname = varstring.replace("var.", "")
             with suppress(Exception):
                 if str(all_variables[varname]) == "":
                     replaced_vartext = replaced_vartext.replace(varstring, '""')
@@ -555,25 +559,6 @@ def list_of_dictkeys_containing(searchdict: dict, target_keyword: str) -> list:
         if target_keyword in item:
             final_list.append(item)
     return final_list
-
-
-# Cleanup lists with special characters
-def fix_lists(eval_string: str):
-    eval_string = eval_string.replace("${[]}", "[]")
-    if "${" in eval_string:
-        eval_string = "".join(eval_string.rsplit("}", 1))
-        eval_string = eval_string.replace("${", "", 1)
-    eval_string = eval_string.replace("[\"['", "")
-    eval_string = eval_string.replace("']\"]", "")
-    eval_string = eval_string.replace('["[', "[")
-    eval_string = eval_string.replace(']"]', "]")
-    eval_string = eval_string.replace("[[", "[")
-    eval_string = eval_string.replace(",)", ")")
-    eval_string = eval_string.replace(",]", "]")
-    eval_string = eval_string.replace("]]", "]")
-    eval_string = eval_string.replace("[True]", "True")
-    eval_string = eval_string.replace("[False]", "False")
-    return eval_string
 
 
 # Cleans out special characters

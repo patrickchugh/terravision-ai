@@ -6,3 +6,4 @@ modules/__pycache__/*
 .vscode/*
 tfdata.json
 architecture.dot.png
+json/*

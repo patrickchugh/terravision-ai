@@ -15,9 +15,9 @@ DATA_REPLACEMENTS = {
 }
 
 
-def resolve_all_variables(tfdata, debug):
+def resolve_all_variables(tfdata, debug: bool, already_processed: bool) -> dict:
     # Load default variable values and user variable values
-    tfdata = get_variable_values(tfdata)
+    tfdata = get_variable_values(tfdata, already_processed)
     # Create view of locals by module
     tfdata = extract_locals(tfdata)
     # Create metadata view from nested TF file resource attributes
@@ -37,21 +37,26 @@ def handle_module_vars(eval_string, tfdata):
     outvalue = ""
     splitlist = eval_string.split(".")
     outputname = helpers.find_between(eval_string, splitlist[1] + ".", " ")
-    mod = helpers.find_between(eval_string, splitlist[0] + ".", " ")
+    mod = helpers.find_between(eval_string, splitlist[0] + ".", ".")
     for file in tfdata["all_output"].keys():
         for i in tfdata["all_output"][file]:
             if outputname in i.keys() and mod in file:
                 outvalue = i[outputname]["value"]
-                if "*.id" in outvalue:
-                    resource_name = helpers.fix_lists(outvalue.split(".*")[0])
-                    outvalue = tfdata["meta_data"][resource_name]["count"]
+                if "*.id" in outvalue and "*.id" in eval_string:
+                    outvalue = tfdata["meta_data"][outvalue]["count"]
+                    break
+                if "*.id" in outvalue and "[" in eval_string and "]" in eval_string:
+                    # Specific number of array being used
+                    index = int(
+                        helpers.find_between(eval_string, "[", "]").replace(" ", "")
+                    )
+                    outvalue = f"module.{mod}.{helpers.strip_var_curlies(outvalue).replace('.*.id', '').strip()}[{index}]"
                     break
     stringarray = eval_string.split(".")
     if len(stringarray) >= 3:
-        modulevar = helpers.cleanup(
-            "module" + "." + stringarray[1] + "." + stringarray[2]
-        ).strip()
-        eval_string = eval_string.replace(modulevar, outvalue)
+        modulevar = "module" + "." + stringarray[1] + "." + stringarray[2]
+        modulevar = modulevar.strip()
+        eval_string = helpers.cleanup_curlies(eval_string.replace(modulevar, outvalue))
     return eval_string
 
 
@@ -84,17 +89,6 @@ def inject_module_variables(tfdata: dict):
                         key != "source" and key != "version"
                     ):  # and key in all_variables.keys():
                         tfdata["variable_map"][module][key] = value
-    # Add quotes for raw strings to aid postfix evaluation
-    for module in tfdata["variable_map"]:
-        for variable in tfdata["variable_map"][module]:
-            value = tfdata["variable_map"][module][variable]
-            if (
-                isinstance(value, str)
-                and "(" not in value
-                and "[" not in value
-                and not value.startswith('"')
-            ):
-                tfdata["variable_map"][module][variable] = f'"{value}"'
     return tfdata
 
 
@@ -107,12 +101,11 @@ def handle_metadata_vars(tfdata):
                 (
                     "var." in value
                     or "local." in value
-                    or "module." in value
                     or "data." in value
+                    or ("module." in value and "aws_" not in value)
                 )
                 and key != "depends_on"
                 and key != "original_count"
-                and len(value) < 1000
             ):
                 mod = attr_list["module"]
                 value = find_replace_values(value, mod, tfdata)
@@ -174,7 +167,7 @@ def replace_local_values(found_list: list, value, module, tfdata):
 def replace_module_vars(found_list: list, value: str, module: str, tfdata: dict):
     for module_var in found_list:
         if "module." in value:
-            cleantext = helpers.fix_lists(module_var)
+            cleantext = module_var
             splitlist = cleantext.split(".")
             outputname = helpers.find_between(cleantext, splitlist[1] + ".", " ")
             oldvalue = value
@@ -197,6 +190,15 @@ def replace_module_vars(found_list: list, value: str, module: str, tfdata: dict)
                     continue
             if value == oldvalue:
                 value = value.replace(module_var, '"UNKNOWN"')
+                click.echo(
+                    f"   WARNING: Cannot resolve {module_var}, assigning empty value in module {module}"
+                )
+            value = oldvalue.replace(
+                outputname, helpers.strip_var_curlies(value)
+            ).replace('"', "")
+            value = value.replace(" ", "")
+            if "[" in value and "*.id" in value:
+                value = (value.replace(".*.id", "")).strip()
     return value
 
 
@@ -268,8 +270,6 @@ def replace_var_values(
             )
             break
         else:
-            if lookup.upper() in tfdata["variable_list"]:
-                value = tfdata["variable_list"][lookup.upper()]
             if lookup.lower() in tfdata["variable_list"]:
                 value = tfdata["variable_list"][lookup.lower()]
             if not value:
@@ -591,7 +591,7 @@ def get_metadata_old(tfdata):  # -> set
     return tfdata
 
 
-def get_variable_values(tfdata) -> dict:
+def get_variable_values(tfdata, already_processed: bool) -> dict:
     """Returns a list of all variables from local .tfvar defaults, supplied varfiles and module var values"""
     click.echo(
         click.style(
@@ -618,7 +618,7 @@ def get_variable_values(tfdata) -> dict:
                         var_value = f'"{var_value}"'
                 else:
                     var_value = ""
-                var_data[var_name] = var_value
+                var_data[var_name.lower()] = var_value
                 # Also update var mapping dict with modules and matching variables
                 if tfdata.get("module_source_dict"):
                     matching = [
@@ -635,7 +635,7 @@ def get_variable_values(tfdata) -> dict:
                     if not var_mappings.get(mod):
                         var_mappings[mod] = {}
                         var_mappings[mod]["source_dir"] = var_source_dir
-                    var_mappings[mod][var_name] = var_value
+                    var_mappings[mod][var_name.lower()] = var_value
     if tfdata.get("module_source_dict"):
         # Insert module parameters as variable names
         for file, modulelist in tfdata["all_module"].items():
@@ -646,7 +646,7 @@ def get_variable_values(tfdata) -> dict:
                         if not var_mappings.get(mod):
                             var_mappings[mod] = {}
                         var_mappings[mod][variable] = params[variable]
-    if tfdata.get("all_variable"):
+    if tfdata.get("all_variable") and not already_processed:
         # Over-write defaults with passed varfile specified values
         for varfile in tfdata["varfile_list"]:
             # Open supplied varfile for reading

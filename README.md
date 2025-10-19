@@ -52,6 +52,7 @@ into this...
 - **Git**  
 - **Graphviz** 
 - **Ollama** (Required for AI-powered diagram refinement)
+- **16GB** of RAM if you want to run Ollama locally. Dedicated GPU is recommended for faster performance.
 
 ## 1. Install External Dependencies
 
@@ -83,14 +84,14 @@ into this...
 
 4. **Ollama** (for AI refinement) - https://ollama.ai/
    ```bash
-   # Install Ollama
+   # For macOS or Linux you can use curl to install Ollama, for Windows just download the install EXE
    curl -fsSL https://ollama.ai/install.sh | sh
-   
-   # Start Ollama service
-   ollama serve
-   
+    
    # Pull required llama3 model
    ollama pull llama3
+
+   # Start Ollama service
+   ollama serve
    ```
 
 ## 2. Install TerraVision
@@ -227,18 +228,24 @@ curl http://your-server:11434/api/tags
 
 ### Working with Pre-generated JSON from previous terravision run (faster)
 ```bash
-# Use previously exported JSON data
-terravision draw --source ./architecture.json
 
 # Export and reuse graph data
 terravision graphdata --source ~/src/terraform --outfile graph.json
+
+# Use previously exported JSON data (just the graph dict)
+terravision draw --source ./graph.json
 terravision draw --source ./graph.json --format svg
+
+# Reprocess and replay from previous debug (for troubleshooting without calling slow terraform init/plan/analayse again)
+terravision draw --source /your_source_files --debug  # createas a tfdata.json in current folder
+terravision draw --source tfdata.json
 ```
 
 ### Debug Mode
 ```bash
 # Enable debug output for troubleshooting and which will dump all state info into tfdata.json
 terravision draw --source ~/src/my-terraform-code --debug
+```
 
 ### Simplified Diagrams
 ```bash
@@ -412,10 +419,9 @@ Exports resource relationships and metadata as JSON.
    
    # Test connection to Ollama
    curl http://localhost:11434/api/tags
-
-   # Update OLLAMA_HOST in modules/cloud_config.py with external IP not local IP if using remote server
    
    ```
+   * Update OLLAMA_HOST in modules/cloud_config.py with external IP not local IP if using remote server
 
 ### Debug Mode
 Use `--debug` flag for detailed troubleshooting information:
