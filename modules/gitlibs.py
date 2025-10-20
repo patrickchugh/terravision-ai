@@ -216,7 +216,10 @@ def clone_specific_folder(repo_url: str, folder_path: str, destination: str):
     """
     repo = git.Repo.init(destination)
     repo_url = "https://" + repo_url if "http" not in repo_url else repo_url
-    origin = repo.create_remote("origin", repo_url)
+    try:
+        origin = repo.remote("origin")
+    except:
+        origin = repo.create_remote("origin", repo_url)
 
     # Enable sparse checkout
     with repo.config_writer() as config:
@@ -261,19 +264,21 @@ def clone_files(sourceURL: str, tempdir: str, module="main"):
     codepath = os.path.join(MODULE_DIR, reponame) + f";{module};"
 
     # Return cached module if exists
-    if os.path.exists(codepath):
+    if os.path.exists(codepath) and module != "main":
         return _handle_cached_module(codepath, tempdir, module, reponame)
 
     # Clone new module
     if module != "main":
         click.echo(f"  Processing External Module named '{module}': {sourceURL}")
 
+    # Check if there is a subfolder element in sourceURL
     gitelements = helpers.extract_subfolder_from_repo(sourceURL)
-
     # Clone entire repo if no subfolder specified
-    if gitelements == sourceURL:
+    if gitelements[0] == sourceURL:
         subfolder = _clone_full_repo(sourceURL, codepath)
     else:
+        if helpers.check_for_domain(str(sourceURL)):
+            sourceURL = get_clone_url(sourceURL)[0]
         # Clone specific subfolder only
         subfolder = gitelements[1]
         clone_specific_folder(gitelements[0], subfolder, codepath)
@@ -292,10 +297,14 @@ def _handle_cached_module(codepath: str, tempdir: str, module: str, reponame: st
         f"  Skipping download of module {reponame}, found existing folder in module cache"
     )
     temp_module_path = os.path.join(tempdir, f";{module};{reponame}")
-    codepath_module = os.path.join(codepath, module)
+    if f";{module};" in codepath and module != "main":
+        codepath_module = os.path.join(codepath, module)
+    else:
+        codepath_module = codepath
     if not os.path.exists(temp_module_path):
-        shutil.copytree(codepath_module, temp_module_path)
-
+        if not os.path.exists(codepath_module):
+            codepath_module = codepath
+            shutil.copytree(codepath_module, temp_module_path)
     return os.path.join(temp_module_path, "")
 
 

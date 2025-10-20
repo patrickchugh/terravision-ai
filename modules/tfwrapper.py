@@ -48,7 +48,7 @@ def tf_initplan(source: tuple, varfile: list, workspace: str):
                     )
                 )
                 exit()
-        returncode = os.system(f"terraform init --upgrade")
+        returncode = os.system(f"terraform init --upgrade -reconfigure")
         if returncode > 0:
             click.echo(
                 click.style(
@@ -69,7 +69,9 @@ def tf_initplan(source: tuple, varfile: list, workspace: str):
             )
         )
         # init workspace
-        returncode = os.system(f"terraform workspace select {workspace}")
+        returncode = os.system(
+            f"terraform workspace select -or-create=True {workspace}"
+        )
         if returncode:
             click.echo(
                 click.style(

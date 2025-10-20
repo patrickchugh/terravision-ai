@@ -77,13 +77,14 @@ def remove_recursive_links(tfdata: dict):
             print(f"  {i}. {' -> '.join(cycle)}")
             node_b = cycle[-1]
             node_a = cycle[-2]
-            graphdict[node_a].remove(node_b)
-            click.echo(
-                click.style(
-                    f"  Removed link from {node_a} to {node_b}",
-                    fg="white",
+            if node_b in graphdict[node_a]:
+                graphdict[node_a].remove(node_b)
+                click.echo(
+                    click.style(
+                        f"  Removed link from {node_a} to {node_b}",
+                        fg="white",
+                    )
                 )
-            )
     return tfdata
 
 
@@ -160,7 +161,15 @@ def extract_subfolder_from_repo(source_url: str) -> tuple[str, str]:
             repo_url = source_url[:protocol_end] + repo_part
             subfolder = subfolder.rstrip("/")
             return repo_url, subfolder
-    
+
+    # Handle URLs without // but ending in path without .git
+    if not source_url.endswith(".git") and "/" in source_url:
+        parts = source_url.rstrip("/").split("/")
+        if len(parts) > 3:  # protocol://domain/user/repo/subfolder
+            repo_url = "/".join(parts[:-1])
+            subfolder = parts[-1]
+            return repo_url, subfolder
+
     return source_url, ""
 
 
@@ -577,6 +586,8 @@ def cleanup_curlies(text: str) -> str:
 def strip_var_curlies(s: str):
     final_string = ""
     stack = []
+    if ".id}" in s:
+        s = s.replace(".id}", "}")
     if "${" in s:
         s = s.replace("${", "~")
     for i in range(len(s)):
@@ -594,6 +605,15 @@ def strip_var_curlies(s: str):
         else:
             final_string += s[i]
     return final_string
+
+
+def extract_terraform_resource(text: str) -> str:
+    """Extract terraform resource type and name from a string like '${module.mymodule.aws_apigatewayv2_api.myapi.id}'"""
+    import re
+
+    pattern = r"\$\{(?:[^(]*\()?(?:module\.[^.]+\.)?([^.]+\.[^.*}]+)(?:\.[^}]*)?\}?"
+    match = re.search(pattern, text)
+    return match.group(1) if match else ""
 
 
 # Cleans out special characters

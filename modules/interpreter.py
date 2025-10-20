@@ -102,7 +102,11 @@ def handle_metadata_vars(tfdata):
                     "var." in value
                     or "local." in value
                     or "data." in value
-                    or ("module." in value and "aws_" not in value)
+                    or (
+                        "module." in value
+                        and "aws_" not in value
+                        and "UNKNOWN" not in value
+                    )
                 )
                 and key != "depends_on"
                 and key != "original_count"
