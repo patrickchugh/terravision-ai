@@ -15,23 +15,23 @@ BASE_DIR = Path(os.path.abspath(os.path.dirname(__file__)))
 def test_help():
     if WINDOWS:
         result = subprocess.run(
-            ["poetry", "run", "python", f"{PARENT_DIR}/ghostwriter-ai", "--help"],
+            ["poetry", "run", "python", f"{PARENT_DIR}/terravision-ai", "--help"],
             stdout=subprocess.PIPE,
         )
     else:
-        result = subprocess.run(["ghostwriter", "--help"], stdout=subprocess.PIPE)
-    assert "ghostwriter" in result.stdout.decode("utf-8") and result.returncode == 0
+        result = subprocess.run(["terravision", "--help"], stdout=subprocess.PIPE)
+    assert "terravision" in result.stdout.decode("utf-8") and result.returncode == 0
 
 
 def verify_json_output(github_repo, expected_output):
     output_file = os.path.join(BASE_DIR, "output.json")
     if WINDOWS:
         os.system(
-            f"poetry run python {PARENT_DIR}/ghostwriter graphdata --source {github_repo} --outfile {output_file}"
+            f"poetry run python {PARENT_DIR}/terravision graphdata --source {github_repo} --outfile {output_file}"
         )
     else:
         os.system(
-            f"ghostwriter graphdata --source {github_repo} --outfile {output_file}"
+            f"terravision graphdata --source {github_repo} --outfile {output_file}"
         )
     assert os.path.exists(output_file)
     o_json_file = open(output_file)
